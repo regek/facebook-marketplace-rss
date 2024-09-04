@@ -1,0 +1,8 @@
+apscheduler>=3.10.4
+beautifulsoup4>=4.12.2
+flask>=3.0.0
+PyRSS2Gen>=1.1
+tzlocal>=5.2
+selenium>=4.23.1
+webdriver-manager>=4.0.2
+requests>=2.32.3

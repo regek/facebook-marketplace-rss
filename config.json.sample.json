@@ -1,0 +1,19 @@
+{
+    "server_ip": "0.0.0.0",
+    "server_port": "5000", 
+    "currency": "$",
+    "refresh_interval_minutes": 15,
+    "log_filename": "fb-rssfeed.log",
+    "url_filters": {
+        "https://www.facebook.com/marketplace/page1": {
+            "level1": ["tv"],
+            "level2": ["smart"],
+            "level3": ["55\"", "55 inch"]
+        },
+        "https://www.facebook.com/marketplace/page2": {
+            "level1": ["dishwasher"],
+            "level2": ["kitchenaid", "samsung"]
+        },
+        "https://www.facebook.com/marketplace/page2": {}
+    }
+}
