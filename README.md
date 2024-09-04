@@ -38,7 +38,7 @@ Note: the code has been tested with `Python3` on `Linux` and `Windows 10`.
    {
        "server_ip": "0.0.0.0", // Listen on all IPs or specify an IP address
        "server_port": "5000", // Port for the RSS server
-       "currency": "CA$", // Currency used in your local marketplace
+       "currency": "$", // Currency used in your local marketplace
        "refresh_interval_minutes": 15, // Interval for checking new ads (recommened 15 interval minutes)
        "log_filename": "fb-rssfeed.log",
        "url_filters": {
