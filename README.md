@@ -30,7 +30,8 @@ Note: the code has been tested with `Python3` on `Linux` and `Windows 10`.
 1. **Modify or Create `config.json`:**
 
    - Copy `config.json.example` to `config.json` and adjust the settings as needed.  
-   - At a minimum, you **must** modify the `currency` field. 
+   - At a minimum, you **must** modify the `currency` field.
+   - Some currency symbols. USA: `$`, Canada: `CA$`, Europe: `€`, UK: `£`, Australia: `A$` 
 
    Example `config.json`:
 
