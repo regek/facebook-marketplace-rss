@@ -116,6 +116,7 @@ Note: the code has been tested with `Python3` on `Linux` and `Windows 10`.
 
 ## How to run in a Docker container
 - Provide `/path/to/config/directory`
+- Leave the `server_ip` and `server_port` as default
 ```bash
 docker run --name fb-mp-rss -d \
   -v /path/to/config/directory:/app/config \
