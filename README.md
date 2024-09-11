@@ -110,3 +110,18 @@ Note: the code has been tested with `Python3` on `Linux` and `Windows 10`.
 - **Feed Updates:** New ads are added to the feed only if they haven't been seen in the past week.
 
 - **RSS Reader:** Use any RSS feed reader to monitor updates. For example, you can use [Feedbro](https://nodetics.com/feedbro/).
+
+## Set log level (optional)
+- set log level `export LOG_LEVEL=ERROR`
+
+## How to run in a Docker container
+- Provide `/path/to/config/directory`
+```bash
+docker run --name fb-mp-rss -d \
+  -v /path/to/config/directory:/app/config \
+  -e CONFIG_FILE=/app/config/config.json \
+  -p 5000:5000 \
+  fb-mp-rss:latest
+```
+
+

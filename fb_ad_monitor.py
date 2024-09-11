@@ -10,6 +10,7 @@ import hashlib
 import json
 import uuid
 import tzlocal
+import os
 from bs4 import BeautifulSoup
 import PyRSS2Gen
 from datetime import datetime, timedelta
@@ -50,19 +51,36 @@ class fbRssAdMonitor:
             lastBuildDate=self.local_time(datetime.now()),
             items=[]
         )
-        
+
     def set_logger(self):
         """
-        Sets up logging configuration.
+        Sets up logging configuration with both file and console streaming.
+        Log level is fetched from the environment variable LOG_LEVEL.
         """
         self.logger = logging.getLogger(__name__)
-        log_formatter = logging.Formatter('%(levelname)s:%(asctime)s:%(funcName)s:%(lineno)d::%(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-        my_handler = RotatingFileHandler(self.log_filename, mode='w', maxBytes=10*1024*1024, 
-                                         backupCount=2, encoding=None, delay=0)
-        my_handler.setFormatter(log_formatter)
-        my_handler.setLevel(logging.INFO)
-        self.logger.setLevel(logging.INFO)
-        self.logger.addHandler(my_handler)
+        log_formatter = logging.Formatter('%(levelname)s:%(asctime)s:%(funcName)s:%(lineno)d::%(message)s', 
+                                          datefmt='%m/%d/%Y %I:%M:%S %p')
+
+        # Get log level from environment variable, defaulting to INFO if not set
+        log_level_str = os.getenv('LOG_LEVEL', 'INFO').upper()
+        log_level = logging.getLevelName(log_level_str)
+
+        # File handler (rotating log)
+        file_handler = RotatingFileHandler(self.log_filename, mode='w', maxBytes=10*1024*1024, 
+                                           backupCount=2, encoding=None, delay=0)
+        file_handler.setFormatter(log_formatter)
+        file_handler.setLevel(log_level)
+
+        # Stream handler (console output)
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(log_formatter)
+        console_handler.setLevel(log_level)
+
+        # Set the logger level and add handlers
+        self.logger.setLevel(log_level)
+        self.logger.addHandler(file_handler)
+        self.logger.addHandler(console_handler)
+
     
     def init_selenium(self):
         """
@@ -350,7 +368,11 @@ class fbRssAdMonitor:
 
 if __name__ == "__main__":
     # Initialize and run the ad monitor
-    monitor = fbRssAdMonitor(json_file='config.json')
+    config_file = os.getenv('CONFIG_FILE', 'config.json')
+    if not os.path.exists(config_file):
+        print(f'Error: Config file {config_file} not found!!!')
+        exit()
+    monitor = fbRssAdMonitor(json_file=config_file)
     monitor.setup_scheduler()
     monitor.run()
 
