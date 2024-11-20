@@ -1,0 +1,6 @@
+.dockerignore
+Dockerfile
+*.log*
+.git
+config.json
+fb-rss-feed.db

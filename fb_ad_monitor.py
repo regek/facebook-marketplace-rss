@@ -11,6 +11,7 @@ import json
 import uuid
 import tzlocal
 import os
+import time
 from bs4 import BeautifulSoup
 import PyRSS2Gen
 from datetime import datetime, timedelta
@@ -43,7 +44,7 @@ class fbRssAdMonitor:
         self.load_from_json(json_file)
         self.set_logger()
         self.app = Flask(__name__)
-        self.init_selenium()
+        self.app.add_url_rule('/rss', 'rss', self.rss)
         self.rss_feed = PyRSS2Gen.RSS2(
             title="Facebook Marketplace Ad Feed",
             link="http://monitor.local/rss",
@@ -87,18 +88,20 @@ class fbRssAdMonitor:
         Initializes Selenium WebDriver with Firefox options.
         """
         try:
-            self.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0"
-            self.firefox_options = FirefoxOptions()
-            self.firefox_options.add_argument("--headless")
-            self.firefox_options.add_argument("--no-sandbox")
-            self.firefox_options.add_argument("--disable-dev-shm-usage")
-            self.firefox_options.set_preference("general.useragent.override", self.user_agent)
+            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0"
+            firefox_options = FirefoxOptions()
+            firefox_options.add_argument("--no-sandbox")
+            firefox_options.add_argument("--disable-dev-shm-usage")
+            firefox_options.add_argument("--private")
+            firefox_options.add_argument("--headless")
+            firefox_options.set_preference("general.useragent.override", user_agent)
+            firefox_options.set_preference("dom.webdriver.enabled", False)  # Disable webdriver flag
+            firefox_options.set_preference("useAutomationExtension", False)  # Disable automation extension
+            firefox_options.set_preference("privacy.resistFingerprinting", True)  # Reduce fingerprinting
+        
+            gecko_driver_path = GeckoDriverManager().install()
+            self.driver = webdriver.Firefox(service=FirefoxService(gecko_driver_path), options=firefox_options)
             
-            self.gecko_driver_path = GeckoDriverManager().install()
-            self.driver = webdriver.Firefox(service=FirefoxService(self.gecko_driver_path), options=self.firefox_options)
-            
-            # Setup Flask routes
-            self.app.add_url_rule('/rss', 'rss', self.rss)
         except Exception as e:
             self.logger.error(f"Error initializing Selenium: {e}")
             raise
@@ -174,7 +177,13 @@ class fbRssAdMonitor:
             self.logger.error(f"An error while processing filters for {title}",e)
             return False
         return True
-
+    
+    def save_html(self, soup):
+        html_content = str(soup.prettify())
+        # Save the HTML content to a file
+        with open('output.html', 'w', encoding='utf-8') as file:
+            file.write(html_content)
+    
     def get_page_content(self, url):
         """
         Fetches the page content using Selenium.
@@ -189,7 +198,7 @@ class fbRssAdMonitor:
             self.logger.info(f"Requesting {url}")
             self.driver.get(url)
             WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'span'))
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'div.x78zum5.xdt5ytf.x1iyjqo2.xd4ddsz'))
             )
             return self.driver.page_source
         except Exception as e:
@@ -222,7 +231,7 @@ class fbRssAdMonitor:
         try:
             soup = BeautifulSoup(content, 'html.parser')
             ads = []
-
+            self.save_html(soup)
             for ad_div in soup.find_all('a', class_=True):
                 href = ad_div.get('href')
                 if not href:
@@ -230,8 +239,10 @@ class fbRssAdMonitor:
                 full_url = f"https://facebook.com{href.split('?')[0]}"
                 title_span = ad_div.find('span', style=lambda value: value and '-webkit-line-clamp' in value)
                 price_span = ad_div.find('span', dir='auto', recursive=True)
+                # print(title_span)
+                # print(price_span)
                 if title_span and price_span:
-                    if price_span.get_text(strip=True).startswith(self.currency) or price_span.get_text(strip=True).match('Free'):
+                    if price_span.get_text(strip=True).startswith(self.currency) or 'free' in price_span.get_text(strip=True).lower():
                         title = title_span.get_text(strip=True) if title_span else 'No Title'
                         price = price_span.get_text(strip=True) if price_span else 'No Price'
 
@@ -275,6 +286,7 @@ class fbRssAdMonitor:
             cursor = conn.cursor()
             seven_days_ago = datetime.now() - timedelta(days=7)
             for url in self.urls_to_monitor:
+                self.init_selenium()
                 content = self.get_page_content(url)
                 if content is None:
                     continue
@@ -299,12 +311,15 @@ class fbRssAdMonitor:
                                        (ad_url, ad_id, title, price, datetime.now()))
                         conn.commit()
                         self.logger.info(f"New ad detected: {title}")
+                self.driver.quit()
+                time.sleep(2)
         except sqlite3.DatabaseError as e:
             self.logger.error(f"Database error: {e}")
         except Exception as e:
             self.logger.error(f"An unexpected error occurred while checking for new ads: {e}")
         finally:
             self.job_lock.release()
+            self.driver.quit()
             if conn:
                 conn.close()
 
