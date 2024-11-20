@@ -1,7 +1,7 @@
 # docker build -t regek/fb-mp-rss:latest .
 
 # Use a slim Ubuntu image as the base
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 # Set environment variables to avoid interactive prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -32,19 +32,27 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://pac
 # Set APT preferences for Mozilla repository
 RUN echo 'Package: *\nPin: origin packages.mozilla.org\nPin-Priority: 1000\n' | tee /etc/apt/preferences.d/mozilla
 
-
 # Update package list and install Firefox
 RUN apt-get update && \
     apt-get install -y firefox && \
     rm -rf /var/lib/apt/lists/*
 
+# Create a non-root user
+RUN useradd -m -s /bin/bash appuser
+
+# Change ownership of the /app directory
+RUN chown -R appuser:appuser /app
+
+# Switch to the non-root user
+USER appuser
+
 # Copy the current directory contents into the container at /app
-COPY . /app
+COPY --chown=appuser:appuser . /app
 
 # Install Python packages specified in requirements.txt
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt --break-system-packages
 
-# Initialize the DB
+# Switch back to root user for DB initialization (if necessary)
 RUN python3 init_db.py
 
 # Expose the port the app runs on
@@ -56,4 +64,3 @@ ENV PYTHONUNBUFFERED=1
 
 # Run the application
 CMD ["python3", "fb_ad_monitor.py"]
-
