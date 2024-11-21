@@ -14,7 +14,8 @@ import os
 import time
 from bs4 import BeautifulSoup
 import PyRSS2Gen
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from dateutil import parser
 import logging
 from threading import Lock
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -49,7 +50,7 @@ class fbRssAdMonitor:
             title="Facebook Marketplace Ad Feed",
             link="http://monitor.local/rss",
             description="An RSS feed to monitor new ads on Facebook Marketplace",
-            lastBuildDate=self.local_time(datetime.now()),
+            lastBuildDate=datetime.now(timezone.utc),
             items=[]
         )
 
@@ -284,7 +285,7 @@ class fbRssAdMonitor:
         try:
             conn = self.get_db_connection()
             cursor = conn.cursor()
-            seven_days_ago = datetime.now() - timedelta(days=7)
+            seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
             for url in self.urls_to_monitor:
                 self.init_selenium()
                 content = self.get_page_content(url)
@@ -295,20 +296,20 @@ class fbRssAdMonitor:
                     cursor.execute('''
                     SELECT ad_id FROM ad_changes
                     WHERE ad_id = ? AND last_checked > ?
-                ''', (ad_id, seven_days_ago.strftime('%Y-%m-%d %H:%M:%S.%f')))
+                ''', (ad_id, seven_days_ago.isoformat()))
                     row = cursor.fetchone()
                     if row is None:
                         # self.logger.info(f'New ad detected: {title}')
                         new_item = PyRSS2Gen.RSSItem(
                             title=f"{title} - {price}",
                             link=ad_url,
-                            description=f"Price: {price} - {title} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                            description=f"Price: {price} - {title} at {datetime.now(timezone.utc)}",
                             guid=PyRSS2Gen.Guid(ad_id),
-                            pubDate=self.local_time(datetime.now())
+                            pubDate=self.local_time(datetime.now(timezone.utc))
                         )
                         self.rss_feed.items.insert(0, new_item)
                         cursor.execute('INSERT INTO ad_changes (url, ad_id, title, price, last_checked) VALUES (?, ?, ?, ?, ?)',
-                                       (ad_url, ad_id, title, price, datetime.now()))
+                                       (ad_url, ad_id, title, price, datetime.now(timezone.utc).isoformat()))
                         conn.commit()
                         self.logger.info(f"New ad detected: {title}")
                 self.driver.quit()
@@ -331,27 +332,29 @@ class fbRssAdMonitor:
             self.rss_feed.items = []  # Clear old items
             conn = self.get_db_connection()
             cursor = conn.cursor()
-            one_week_ago = datetime.now() - timedelta(days=7)
+            # one_week_ago = datetime.now(timezone.utc) - timedelta(minutes=self.refersh_interval_minutes+5)
+            # print(one_week_ago)
             cursor.execute('''
                 SELECT * FROM ad_changes 
                 WHERE last_checked > ? 
                 ORDER BY last_checked DESC
-            ''', (one_week_ago.strftime('%Y-%m-%d %H:%M:%S'),))
+            ''', (self.rss_feed.lastBuildDate.isoformat(),))
             changes = cursor.fetchall()
             for change in changes:
                 try:
+                    last_checked_datetime = parser.parse(change['last_checked'])
                     new_item = PyRSS2Gen.RSSItem(
                         title=f"{change['title']} - {change['price']}",
                         link=change['url'],
                         description=f"Price: {change['price']} - {change['title']} at {change['last_checked']}",
                         guid=PyRSS2Gen.Guid(change['ad_id']),
-                        pubDate=self.local_time(datetime.strptime(change['last_checked'], '%Y-%m-%d %H:%M:%S.%f'))
+                        pubDate=self.local_time(last_checked_datetime)
                     )
                     self.rss_feed.items.append(new_item)
                 except ValueError as e:
                     self.logger.error(f"Error parsing date from the database: {e}")
             conn.close()
-            self.rss_feed.lastBuildDate = self.local_time(datetime.now())
+            self.rss_feed.lastBuildDate = datetime.now(timezone.utc)
         except sqlite3.DatabaseError as e:
             self.logger.error(f"Database error while generating RSS feed: {e}")
         except Exception as e:
