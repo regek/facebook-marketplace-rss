@@ -118,7 +118,7 @@ class fbRssAdMonitor:
                 self.check_for_new_ads,
                 'interval',
                 id=str(uuid.uuid4()),  # Unique ID for the job
-                minutes=self.refersh_interval_minutes,
+                minutes=self.refresh_interval_minutes,
                 misfire_grace_time=30,
                 coalesce=True
             )
@@ -142,7 +142,7 @@ class fbRssAdMonitor:
                 self.server_ip = data['server_ip']
                 self.server_port = data['server_port']
                 self.currency = data['currency']
-                self.refersh_interval_minutes = data['refersh_interval_minutes']
+                self.refresh_interval_minutes = data['refresh_interval_minutes']
                 self.log_filename = data['log_filename']
                 self.url_filters = data.get('url_filters', {})
                 self.urls_to_monitor = list(self.url_filters.keys())
@@ -332,7 +332,7 @@ class fbRssAdMonitor:
             self.rss_feed.items = []  # Clear old items
             conn = self.get_db_connection()
             cursor = conn.cursor()
-            # one_week_ago = datetime.now(timezone.utc) - timedelta(minutes=self.refersh_interval_minutes+5)
+            # one_week_ago = datetime.now(timezone.utc) - timedelta(minutes=self.refresh_interval_minutes+5)
             # print(one_week_ago)
             cursor.execute('''
                 SELECT * FROM ad_changes 
