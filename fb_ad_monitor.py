@@ -307,11 +307,14 @@ class fbRssAdMonitor:
                             guid=PyRSS2Gen.Guid(ad_id),
                             pubDate=self.local_time(datetime.now(timezone.utc))
                         )
-                        self.rss_feed.items.insert(0, new_item)
-                        cursor.execute('INSERT INTO ad_changes (url, ad_id, title, price, last_checked) VALUES (?, ?, ?, ?, ?)',
-                                       (ad_url, ad_id, title, price, datetime.now(timezone.utc).isoformat()))
-                        conn.commit()
-                        self.logger.info(f"New ad detected: {title}")
+                        try:
+                            cursor.execute('INSERT INTO ad_changes (url, ad_id, title, price, last_checked) VALUES (?, ?, ?, ?, ?)',
+                                        (ad_url, ad_id, title, price, datetime.now(timezone.utc).isoformat()))
+                            conn.commit()
+                            self.rss_feed.items.insert(0, new_item)
+                            self.logger.info(f"New ad detected: {title}")
+                        except sqlite3.IntegrityError as e:
+                            continue
                 self.driver.quit()
                 time.sleep(2)
         except sqlite3.DatabaseError as e:

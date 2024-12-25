@@ -1,0 +1,12 @@
+#docker-compose up -d
+services:
+  fb-mp-rss:
+    image: regek/fb-mp-rss:latest
+    container_name: fb-mp-rss
+    restart: always
+    environment:
+      CONFIG_FILE: /app/config/config.json
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./:/app/config

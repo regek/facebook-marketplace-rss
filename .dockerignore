@@ -4,3 +4,4 @@ Dockerfile
 .git
 config.json
 fb-rss-feed.db
+docker-compose.yml
